@@ -6,6 +6,12 @@ if [ "${1:0:1}" = '-' ]; then
 	CMDARG="$@"
 fi
 
+if [ -z "$CLUSTER_NAME" ]; then
+	echo >&2 'Error:  You need to specify CLUSTER_NAME'
+	exit 1
+fi
+
+
 	# Get config
 	DATADIR="$("mysqld" --verbose --help 2>/dev/null | awk '$1 == "datadir" { print $2; exit }')"
 
@@ -92,4 +98,20 @@ fi
 	touch $DATADIR/init.ok
 	chown -R mysql:mysql "$DATADIR"
 
-exec mysqld --user=mysql --log-error=${DATADIR}error.log $CMDARG
+echo
+echo 'Registeting in the discovery service'
+echo
+
+function join { local IFS="$1"; shift; echo "$*"; }
+
+# Read the list of registered IP addresses
+set +e
+i=`curl http://$DISCOVERY_SERVICE/v2/keys/pxc-cluster/$CLUSTER_NAME/ | jq -r '.node.nodes[].value'`
+cluster_join=$(join , $i)
+
+# Register the current IP in the discovery service
+ipaddr=$(hostname -i | awk ' { print $1 } ')
+curl http://$DISCOVERY_SERVICE/v2/keys/pxc-cluster/$CLUSTER_NAME/$ipaddr -XPUT -d value="$ipaddr"
+set -e
+exec mysqld --user=mysql --wsrep_cluster_name=$CLUSTER_NAME --wsrep_cluster_address="gcomm://$cluster_join" --log-error=${DATADIR}error.log $CMDARG
+
