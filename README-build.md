@@ -1,10 +1,10 @@
 Build image
 
-  `docker build -t percona-xtradb-cluster Dockerfile`
+  `docker build -t perconalab/percona-xtradb-cluster Dockerfile`
 
 or
 
-  `docker build --build-arg PXC_VERSION=5.6.29 -t percona-xtradb-cluster Dockerfile`
+  `docker build --build-arg PXC_VERSION=5.6.29 -t perconalab/percona-xtradb-cluster Dockerfile`
 
 Tag image
   
