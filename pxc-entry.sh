@@ -10,11 +10,6 @@ if [ -z "$CLUSTER_NAME" ]; then
 	echo >&2 'Error:  You need to specify CLUSTER_NAME'
 	exit 1
 fi
-if [ -z "$DISCOVERY_SERVICE" -a -z "$CLUSTER_JOIN" ]; then
-	echo >&2 'Error! You need to specify one of DISCOVERY_SERVICE or CLUSTER_JOIN'
-	exit 1
-fi
-
 
 	# Get config
 	DATADIR="$("mysqld" --verbose --help 2>/dev/null | awk '$1 == "datadir" { print $2; exit }')"
@@ -62,6 +57,8 @@ fi
 			DELETE FROM mysql.user ;
 			CREATE USER 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' ;
 			GRANT ALL ON *.* TO 'root'@'%' WITH GRANT OPTION ;
+			CREATE USER 'xtrabackup'@'localhost' IDENTIFIED BY '$XTRABACKUP_PASSWORD';
+			GRANT RELOAD,LOCK TABLES,REPLICATION CLIENT ON *.* TO 'xtrabackup'@'localhost';
 			DROP DATABASE IF EXISTS test ;
 			FLUSH PRIVILEGES ;
 		EOSQL
@@ -127,5 +124,5 @@ set -e
 
 fi
 
-exec mysqld --user=mysql --wsrep_cluster_name=$CLUSTER_NAME --wsrep_cluster_address="gcomm://$cluster_join" --log-error=${DATADIR}error.log $CMDARG
+exec mysqld --user=mysql --wsrep_cluster_name=$CLUSTER_NAME --wsrep_cluster_address="gcomm://$cluster_join" --wsrep_sst_method=xtrabackup-v2 --wsrep_sst_auth="xtrabackup:$XTRABACKUP_PASSWORD" --log-error=${DATADIR}error.log $CMDARG
 
