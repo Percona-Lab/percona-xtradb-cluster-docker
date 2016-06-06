@@ -11,12 +11,15 @@ Basic usage
 
 For the exampl see `start_node.sh` script
 
-CLUSTER_NAME enviroment variable should be set, the easiest to do is
+`CLUSTER_NAME` enviroment variable should be set, the easiest to do is
 `export CLUSTER_NAME=cluster1`
 
-The script will try to create overlay network ${CLUSTER_NAME}_net.
+The script will try to create overlay network `${CLUSTER_NAME}_net`.
 If you want to have a bridge network or network with specific parameter,
 create it in advance.
 For example:
 `docker network create -d bridge ${CLUSTER_NAME}_net`
 
+Docker image accept following parameters
+* One of MYSQL_ROOT_PASSWORD, MYSQL_ALLOW_EMPTY_PASSWORD or MYSQL_RANDOM_ROOT_PASSWORD must be defined
+* XTRABACKUP_PASSWORD
