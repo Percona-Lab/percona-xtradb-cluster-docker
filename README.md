@@ -93,6 +93,33 @@ Example output:
 Right now there is no automatic cleanup from discovery service registry, you can remove all entries by
 `curl http://10.20.2.4:2379/v2/keys/pxc-cluster/$CLUSTER_NAME?recursive=true -XDELETE`
 
+Starting discovery service
+--------------------------
+
+For the full documentation please check https://coreos.com/etcd/docs/latest/docker_guide.html
+
+The simple script to start 1-node etcd (assuming `ETCD_HOST` variable is defined) is:
+
+```
+ETCD_HOST=${ETCD_HOST:-10.20.2.4:2379}
+docker run -d -v /usr/share/ca-certificates/:/etc/ssl/certs -p 4001:4001 -p 2380:2380 -p 2379:2379 \
+ --name etcd quay.io/coreos/etcd \
+ -name etcd0 \
+ -advertise-client-urls http://${ETCD_HOST}:2379,http://${ETCD_HOST}:4001 \
+ -listen-client-urls http://0.0.0.0:2379,http://0.0.0.0:4001 \
+ -initial-advertise-peer-urls http://${ETCD_HOST}:2380 \
+ -listen-peer-urls http://0.0.0.0:2380 \
+ -initial-cluster-token etcd-cluster-1 \
+ -initial-cluster etcd0=http://${ETCD_HOST}:2380 \
+ -initial-cluster-state new
+``` 
+
+Running Docker overlay network
+------------------------------
+
+The great intro with easy steps how to run Docker overlay network is here http://chunqi.li/2015/11/09/docker-multi-host-networking/
+
+
 Running with ProxySQL
 ---------------------
 
