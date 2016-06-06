@@ -30,6 +30,85 @@ Docker image accept following parameters
 Discovery service
 -----------------
 
-Cluster will try to register itself in the discovery service so new nodes or ProxySQL can easily find running nodes.
+The cluster will try to register itself in the discovery service so new nodes or ProxySQL can easily find running nodes.
 
+Assuming you have variable `ETCD_HOST` set to `IP:PORT` of running etcd, e.g. `export ETCD_HOST=10.20.2.4:2379`, you can explore current settings by
+`curl http://$ETCD_HOST/v2/keys/pxc-cluster/$CLUSTER_NAME/?recursive=true  | jq`
+
+Example output:
+```
+{
+  "action": "get",
+  "node": {
+    "key": "/pxc-cluster/cluster4",
+    "dir": true,
+    "nodes": [
+      {
+        "key": "/pxc-cluster/cluster4/10.0.5.2",
+        "dir": true,
+        "nodes": [
+          {
+            "key": "/pxc-cluster/cluster4/10.0.5.2/ipaddr",
+            "value": "10.0.5.2",
+            "modifiedIndex": 19600,
+            "createdIndex": 19600
+          },
+          {
+            "key": "/pxc-cluster/cluster4/10.0.5.2/hostname",
+            "value": "2af0a75ce0cb",
+            "modifiedIndex": 19601,
+            "createdIndex": 19601
+          }
+        ],
+        "modifiedIndex": 19600,
+        "createdIndex": 19600
+      },
+      {
+        "key": "/pxc-cluster/cluster4/10.0.5.3",
+        "dir": true,
+        "nodes": [
+          {
+            "key": "/pxc-cluster/cluster4/10.0.5.3/ipaddr",
+            "value": "10.0.5.3",
+            "modifiedIndex": 26420,
+            "createdIndex": 26420
+          },
+          {
+            "key": "/pxc-cluster/cluster4/10.0.5.3/hostname",
+            "value": "cfb29833f1d6",
+            "modifiedIndex": 26421,
+            "createdIndex": 26421
+          }
+        ],
+        "modifiedIndex": 26420,
+        "createdIndex": 26420
+      }
+    ],
+    "modifiedIndex": 19600,
+    "createdIndex": 19600
+  }
+}
+```
+
+Right now there is no automatic cleanup from discovery service registry, you can remove all entries by
+`curl http://10.20.2.4:2379/v2/keys/pxc-cluster/$CLUSTER_NAME?recursive=true -XDELETE`
+
+Running with ProxySQL
+---------------------
+
+ProxySQL image https://hub.docker.com/r/perconalab/proxysql/
+provides an integration with Percona XtraDB Cluster and discovery service.
+
+You can start proxysql image by
+```
+docker run -d -p 3306:3306 -p 6032:6032 --net=$NETWORK_NAME --name=${CLUSTER_NAME}_proxysql \
+        -e CLUSTER_NAME=$CLUSTER_NAME \
+        -e ETCD_HOST=$ETCD_HOST \
+        -e MYSQL_ROOT_PASSWORD=Theistareyk \
+        -e MYSQL_PROXY_USER=proxyuser \
+        -e MYSQL_PROXY_PASSWORD=s3cret \
+        perconalab/proxysql
+```
+
+and the by running `docker exec -it ${CLUSTER_NAME}_proxysql add_cluster_nodes.sh` it will register all nodes in the ProxySQL
 
