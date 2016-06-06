@@ -137,5 +137,8 @@ docker run -d -p 3306:3306 -p 6032:6032 --net=$NETWORK_NAME --name=${CLUSTER_NAM
         perconalab/proxysql
 ```
 
-and the by running `docker exec -it ${CLUSTER_NAME}_proxysql add_cluster_nodes.sh` it will register all nodes in the ProxySQL
+where `MYSQL_ROOT_PASSWORD` is root password for MySQL nodes, it is needed to register the proxy user. The user `MYSQL_PROXY_USER` with password `MYSQL_PROXY_PASSWORD` will be registered on all Percona XtraDB Cluster nodes
+
+
+Running `docker exec -it ${CLUSTER_NAME}_proxysql add_cluster_nodes.sh` it will register all nodes in the ProxySQL
 
