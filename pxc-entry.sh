@@ -12,7 +12,7 @@ if [ -z "$CLUSTER_NAME" ]; then
 fi
 
 	# Get config
-	DATADIR="$("mysqld" --verbose --help 2>/dev/null | awk '$1 == "datadir" { print $2; exit }')"
+	DATADIR="$("mysqld" --verbose --wsrep_provider= --help 2>/dev/null | awk '$1 == "datadir" { print $2; exit }')"
 
 	if [ ! -e "$DATADIR/init.ok" ]; then
 		if [ -z "$MYSQL_ROOT_PASSWORD" -a -z "$MYSQL_ALLOW_EMPTY_PASSWORD" -a -z "$MYSQL_RANDOM_ROOT_PASSWORD" ]; then
@@ -21,11 +21,13 @@ fi
                         exit 1
                 fi
 		mkdir -p "$DATADIR"
-		chown -R mysql:mysql "$DATADIR"
 
-		echo 'Running mysql_install_db'
-		mysql_install_db --user=mysql --datadir="$DATADIR" --rpm --keep-my-cnf
-		echo 'Finished mysql_install_db'
+		echo "Running --initialize-insecure on $DATADIR"
+		ls -lah $DATADIR
+		mysqld --initialize-insecure
+		chown -R mysql:mysql "$DATADIR"
+		chown mysql:mysql /var/log/mysqld.log
+		echo 'Finished --initialize-insecure'
 
 		mysqld --user=mysql --datadir="$DATADIR" --skip-networking &
 		pid="$!"
@@ -58,7 +60,7 @@ fi
 			CREATE USER 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' ;
 			GRANT ALL ON *.* TO 'root'@'%' WITH GRANT OPTION ;
 			CREATE USER 'xtrabackup'@'localhost' IDENTIFIED BY '$XTRABACKUP_PASSWORD';
-			GRANT RELOAD,LOCK TABLES,REPLICATION CLIENT ON *.* TO 'xtrabackup'@'localhost';
+			GRANT RELOAD,PROCESS,LOCK TABLES,REPLICATION CLIENT ON *.* TO 'xtrabackup'@'localhost';
 			GRANT REPLICATION CLIENT ON *.* TO monitor@'%' IDENTIFIED BY 'monitor';
 			DROP DATABASE IF EXISTS test ;
 			FLUSH PRIVILEGES ;
