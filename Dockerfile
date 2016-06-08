@@ -15,7 +15,10 @@ VOLUME /var/lib/mysql
 
 COPY pxc-entry.sh /entrypoint.sh
 COPY jq /usr/bin/jq
+COPY clustercheckcron /usr/bin/clustercheckcron
+
 RUN chmod a+x /usr/bin/jq
+RUN chmod a+x /usr/bin/clustercheckcron
  
 ENTRYPOINT ["/entrypoint.sh"]
 
