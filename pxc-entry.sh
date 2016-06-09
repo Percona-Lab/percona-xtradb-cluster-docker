@@ -115,24 +115,40 @@ function join { local IFS="$1"; shift; echo "$*"; }
 
 # Read the list of registered IP addresses
 set +e
-#i=`curl http://$DISCOVERY_SERVICE/v2/keys/pxc-cluster/$CLUSTER_NAME/ | jq -r '.node.nodes[].value'`
-i=$(curl http://$DISCOVERY_SERVICE/v2/keys/pxc-cluster/$CLUSTER_NAME/ | jq -r '.node.nodes[]?.key' | awk -F'/' '{print $(NF)}')
-cluster_join=$(join , $i)
 
-# Register the current IP in the discovery service
 ipaddr=$(hostname -i | awk ' { print $1 } ')
 hostname=$(hostname)
+
+curl http://$DISCOVERY_SERVICE/v2/keys/pxc-cluster/queue/$CLUSTER_NAME -XPOST -d value=$ipaddr -d ttl=60
+
+#get list of IP from queue 
+i=$(curl http://$DISCOVERY_SERVICE/v2/keys/pxc-cluster/queue/$CLUSTER_NAME | jq -r '.node.nodes[].value')
+
+# this remove my ip from the list
+i1=${i[@]/$ipaddr}
+cluster_join1=$(join , $i1)
+
+# Register the current IP in the discovery service
 
 # key set to expire in 30 sec. There is a cronjob that should update them regularly
 curl http://$DISCOVERY_SERVICE/v2/keys/pxc-cluster/$CLUSTER_NAME/$ipaddr/ipaddr -XPUT -d value="$ipaddr" -d ttl=30
 curl http://$DISCOVERY_SERVICE/v2/keys/pxc-cluster/$CLUSTER_NAME/$ipaddr/hostname -XPUT -d value="$hostname" -d ttl=30
-curl http://$DISCOVERY_SERVICE/v2/keys/pxc-cluster/$CLUSTER_NAME/$ipaddr -XPUT -d ttl=30 -d dir=true
+curl http://$DISCOVERY_SERVICE/v2/keys/pxc-cluster/$CLUSTER_NAME/$ipaddr -XPUT -d ttl=30 -d dir=true -d prevExist=true
+
+#i=`curl http://$DISCOVERY_SERVICE/v2/keys/pxc-cluster/$CLUSTER_NAME/ | jq -r '.node.nodes[].value'`
+i=$(curl http://$DISCOVERY_SERVICE/v2/keys/pxc-cluster/$CLUSTER_NAME/?quorum=true | jq -r '.node.nodes[]?.key' | awk -F'/' '{print $(NF)}')
+# this remove my ip from the list
+i2=${i[@]/$ipaddr}
+cluster_join2=$(join , $i1)
+cluster_join=$(join , $i1 $i2 )
+echo "Joining cluster $cluster_join"
+
 
 /usr/bin/clustercheckcron monitor monitor 1 /var/lib/mysql/clustercheck.log 1 & 
 set -e
 
 fi
 
-
-exec mysqld --user=mysql --wsrep_cluster_name=$CLUSTER_NAME --wsrep_cluster_address="gcomm://$cluster_join" --wsrep_sst_method=xtrabackup-v2 --wsrep_sst_auth="xtrabackup:$XTRABACKUP_PASSWORD" --log-error=${DATADIR}error.log $CMDARG
+#--log-error=${DATADIR}error.log
+exec mysqld --user=mysql --wsrep_cluster_name=$CLUSTER_NAME --wsrep_cluster_address="gcomm://$cluster_join" --wsrep_sst_method=xtrabackup-v2 --wsrep_sst_auth="xtrabackup:$XTRABACKUP_PASSWORD" $CMDARG
 
